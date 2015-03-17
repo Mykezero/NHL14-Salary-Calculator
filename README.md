@@ -1,7 +1,7 @@
 NHL14-Salary-Calculator
 =======================
 
-**Note: Project discontinued; User no longer showed interest in such a project.
+**Note: Project discontinued; User no longer showed interest in such a project.**
 
 Calculates the salary for an NHL14 character and provides a salary based on the characters statistics.
 
