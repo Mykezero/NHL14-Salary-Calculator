@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
+using Ciloci.Flee;
 using NHL_14_Salary_Calculator.Classes;
 
 namespace NHL_14_Salary_Calculator
@@ -12,9 +12,10 @@ namespace NHL_14_Salary_Calculator
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
-        private HockeyStats model;
+        private readonly HockeyStats model;
+        private Dictionary<object, bool?> results = new Dictionary<object, bool?>();
 
         public MainWindow()
         {
@@ -25,7 +26,7 @@ namespace NHL_14_Salary_Calculator
             CalculateButton.Click += CalculateButton_Click;
             HockeyStats.Items.Filter = Filter;
             Formula.KeyDown += Formula_KeyDown;
-            this.KeyDown += MainWindow_KeyDown;
+            KeyDown += MainWindow_KeyDown;
         }
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -35,77 +36,104 @@ namespace NHL_14_Salary_Calculator
         }
 
         private void Formula_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {            
+        {
             if (e.Key == Key.Enter)
             {
-                HockeyStats.Items.Filter = Filter;
+                GenerateResults();
             }
-        }        
+        }
 
         private bool Filter(object x)
         {
-            //var tokens = Formula.Text.Split(new []{" "}, StringSplitOptions.RemoveEmptyEntries);
-            //if (!tokens.Any()) return true;
-
-            //var fields = tokens.Where(token => model.Headers
-            //    .Select(header => header.ToLowerInvariant())
-            //    .Contains(token.ToLowerInvariant()))
-            //    .ToDictionary(
-            //        header => header,
-            //        header => model.Headers
-            //            .Select(h => h.ToLowerInvariant())
-            //            .ToList()
-            //            .IndexOf(header.ToLowerInvariant()));
-
-            //var value = fields.First().Value;
-
-            //var result = (((Stats) x).Map[value] is int ? (int) ((Stats) x).Map[value] : 0) > 50;
-            var stats = x as Stats;
-
-            var stdPm = CalculateStdDev(model.Skaters.Select(s => s.Stats.PlusMinus * 1.0 / s.Stats.GamesPlayed).ToList());
-            var stdApg = CalculateStdDev(model.Skaters.Select(s => s.Stats.AssistsPerGame).ToList());
-            var stdPim = CalculateStdDev(model.Skaters.Select(s => 1.0 * s.Stats.Penalties / s.Stats.GamesPlayed).ToList());
-            var pim = 1.0* stats.Penalties/ stats.GamesPlayed;
-            var result = stdPm - stats.PlusMinus*1.0/stats.GamesPlayed;
-
-
-            //return (stats.Position == "D" || stats.Position == "LD" || stats.Position == "RD") &&
-            //       (stats.GamesPlayed > 40) &&
-            //       (stdApg - stats.AssistsPerGame > 0) &&
-            //       (stdPim - pim < 0) &&
-            //       (stdPm - result < 0);
-
-            return Regex.IsMatch(stats.Name, Formula.Text, RegexOptions.IgnoreCase);
+            if (string.IsNullOrWhiteSpace(Formula.Text)) return true;
+            var result = results.ContainsKey(x) ? results[x] : true;            
+            return result ?? true;
         }
 
-        private double CalculateStdDev(IEnumerable<double> values)
+        private bool? TryEvaluateExpression(string expression, ExpressionContext context)
         {
-            double ret = 0;
-            if (values.Count() > 0)
+            try
             {
-                //Compute the Average      
-                double avg = values.Average();
-                //Perform the Sum of (value-avg)_2_2      
-                double sum = values.Sum(d => Math.Pow(d - avg, 2));
-                //Put it all together      
-                ret = Math.Sqrt((sum) / (values.Count() - 1));
+                var result = EvaluateExpression(expression, context);
+                return result;
             }
-            return ret;
+            catch (ExpressionCompileException)
+            {
+                return null;
+            }
         }
 
+        private bool EvaluateExpression(string expression, ExpressionContext context)
+        {
+            IGenericExpression<bool> eGeneric = context.CompileGeneric<bool>(expression);
+            var result = eGeneric.Evaluate();
+            return result;
+        }        
 
         private void CalculateButton_Click(object sender, RoutedEventArgs e)
+        {
+            GenerateResults();
+        }
+
+        private void GenerateResults()
+        {
+            var expression = Formula.Text;
+
+            if (string.IsNullOrWhiteSpace(expression))
+            {
+                ShowAllStats();
+                return;
+            }
+
+            var tasks = CreateTasks(expression).ToList();
+            tasks.ForEach(x => x.Start());
+            results = WaitForResults(tasks);
+
+            ApplyFilter();
+        }
+
+        private void ShowAllStats()
+        {
+            results = model.Skaters.Select(x => x.Stats).ToDictionary(x => (object) x, x => new bool?(true));
+            ApplyFilter();
+        }
+
+        private void ApplyFilter()
         {
             HockeyStats.Items.Filter = Filter;
             HockeyStats.Items.Refresh();
         }
 
-        private DataGridColumn CreateDataGridColumn(string header)
+        private static Dictionary<object, bool?> WaitForResults(IEnumerable<Task<TaskResult>> tasks)
         {
-            return new DataGridTextColumn()
-            {
-                Header = header
-            };
+            return Task.WhenAll(tasks)
+                .GetAwaiter()
+                .GetResult()
+                .ToDictionary(x => x.Reference, x => x.Result);
+        }
+
+        private IEnumerable<Task<TaskResult>> CreateTasks(string expression)
+        {
+            return model.Skaters
+                .Select(x => x.Stats)
+                .Select(x => new Task<TaskResult>(() =>
+                {
+                    var result = EvaluateExpression(x, expression);
+                    return new TaskResult()
+                    {
+                        Reference = x,
+                        Result = result
+                    };
+                }));
+        }
+
+        private bool? EvaluateExpression(Stats x, string expression)
+        {
+            ExpressionContext context = new ExpressionContext();
+            context.Imports.AddType(typeof(Math));
+            context.Variables["stats"] = x;
+            var result = TryEvaluateExpression(expression, context);
+            return result;
         }
     }
 }
