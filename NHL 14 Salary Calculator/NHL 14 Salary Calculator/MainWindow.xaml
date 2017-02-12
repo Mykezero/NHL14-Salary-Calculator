@@ -2,7 +2,32 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="350" Width="525">
-    <ScrollViewer>
-        <TextBlock Text="{Binding Text}" TextWrapping="Wrap"></TextBlock>
-    </ScrollViewer>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Label Content="Formula"/>
+        <TextBox 
+            Name="Formula" 
+            Grid.Row="0" 
+            Grid.Column="1" />
+        <Button 
+            Name="CalculateButton" 
+            Grid.Column="2"
+            Content="Calculate" />
+        <DataGrid x:Name="HockeyStats" 
+                  Grid.Row="1"
+                  Grid.ColumnSpan="3"
+                  ItemsSource="{Binding}" 
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  EnableRowVirtualization="True" 
+                  EnableColumnVirtualization="True" />
+    </Grid>
 </Window>
+

@@ -1,9 +1,5 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace NHL_14_Salary_Calculator.Classes
 {
@@ -12,17 +8,17 @@ namespace NHL_14_Salary_Calculator.Classes
         /// <summary>
         /// Name of the script to run
         /// </summary>
-        private string _name;
+        private readonly string _name;
         
         /// <summary>
         /// The value for the option to select
         /// </summary>
-        private string _value;
+        private readonly string _value;
 
-        public Script(String name, String value)
+        public Script(string name, string value)
         {
-            this._name = name;
-            this._value = value;
+            _name = name;
+            _value = value;
         }
 
         /// <summary>
@@ -31,13 +27,11 @@ namespace NHL_14_Salary_Calculator.Classes
         /// events to fire.
         /// </summary>
         /// <param name="driver">The driver we are using</param>
-        /// <param name="id">The id of the java script function we want to run</param>
-        /// <param name="value">The value for the option we want</param>
         public void RunScript(IWebDriver driver)
         {
-            var element = driver.FindElement(By.Id(this._name));
+            var element = driver.FindElement(By.CssSelector(_name));
             SelectElement selectElem = new SelectElement(element);
-            selectElem.SelectByValue(this._value);
+            selectElem.SelectByValue(_value);
         }
     }
 }

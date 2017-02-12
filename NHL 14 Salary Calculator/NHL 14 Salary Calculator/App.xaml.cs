@@ -1,43 +1,28 @@
-﻿using HtmlAgilityPack;
-using NHL_14_Salary_Calculator.Classes;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Firefox;
-using OpenQA.Selenium.Remote;
-using OpenQA.Selenium.Support.UI;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Threading;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Forms;
+using NHL_14_Salary_Calculator.Classes;
 
 namespace NHL_14_Salary_Calculator
 {
     /// <summary>
-    /// The type of player html we'll be parsing
-    /// </summary>
-    public enum PlayerType
-    {
-        Skater,
-        Goalie
-    }
-
-    /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
-    public partial class App : System.Windows.Application
+    public partial class App : Application
     {
-        public static String Text = String.Empty;
-    
+        public static HockeyStats HockeyStats { get; set; }            
+
         public App()
-        {   
-            Text = Parser
-                .GetInstance(PlayerType.Skater)
-                .GetPlayerString(1);
-        }       
+        {
+            HockeyStats = Parser.GetInstance(PlayerType.Skater).ViewModel;
+        }
+    }
+
+    public class HockeyStats
+    {
+        public ObservableCollection<string> Headers { get; set; } =
+            new ObservableCollection<string>();
+
+        public ObservableCollection<Skater> Skaters { get; set; } =
+            new ObservableCollection<Skater>();
     }
 }
